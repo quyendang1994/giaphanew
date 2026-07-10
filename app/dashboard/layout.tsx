@@ -23,7 +23,7 @@ export default async function DashboardLayout({
 
   if (!profile?.is_active) {
     return (
-      <div className="min-h-screen bg-neutral text-primary flex flex-col font-sans">
+      <div className="min-h-screen bg-antique text-primary flex flex-col font-sans">
         <header className="sticky top-0 z-30 bg-white/80 border-b border-stone-200 shadow-sm transition-all duration-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -76,7 +76,7 @@ export default async function DashboardLayout({
 
   return (
     <UserProvider user={user} profile={profile}>
-      <div className="min-h-screen bg-neutral text-primary flex flex-col font-sans">
+      <div className="min-h-screen bg-antique text-primary flex flex-col font-sans">
         <DashboardHeader />
         {children}
         <Footer

@@ -79,6 +79,25 @@ select {
   @apply bg-white/70 backdrop-blur-xl rounded-3xl p-[32px] shadow-soft hover:-translate-y-1 hover:shadow-soft-hover transition-all duration-300;
 }
 
+/* Nền cổ kính (giấy da / parchment) cho khu vực dashboard.
+   Tông kem ngả nâu + hiệu ứng ố vàng ở các góc như giấy cũ,
+   thêm vân giấy chéo rất mờ. Cố định khi cuộn để làm nền tĩnh. */
+.bg-antique {
+  background-color: #f2e8d3;
+  background-image:
+    radial-gradient(ellipse at top left, rgba(150, 111, 51, 0.12), transparent 45%),
+    radial-gradient(ellipse at top right, rgba(120, 72, 40, 0.10), transparent 45%),
+    radial-gradient(ellipse at bottom, rgba(90, 62, 34, 0.14), transparent 55%),
+    repeating-linear-gradient(
+      45deg,
+      rgba(120, 90, 50, 0.02) 0px,
+      rgba(120, 90, 50, 0.02) 2px,
+      transparent 2px,
+      transparent 7px
+    );
+  background-attachment: fixed;
+}
+
 .title {
   @apply text-2xl sm:text-3xl font-serif font-bold text-primary;
 }
