@@ -26,10 +26,10 @@ export default function LoginPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const hostname = window.location.hostname;
-      if (hostname === config.demoDomain) {
+      if (config.demoDomain && hostname === config.demoDomain) {
         setIsDemo(true);
-        setEmail("giaphaos@homielab.com");
-        setPassword("giaphaos");
+        setEmail(config.exampleEmail);
+        setPassword(config.examplePassword);
       }
     }
   }, []);
