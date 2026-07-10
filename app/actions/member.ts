@@ -4,6 +4,10 @@ import { getProfile, getSupabase } from "@/utils/supabase/queries";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+// RFC 4122 UUID (dùng để chặn PostgREST filter injection qua .or())
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function deleteMemberProfile(memberId: string) {
   const profile = await getProfile();
   const supabase = await getSupabase();
@@ -12,6 +16,11 @@ export async function deleteMemberProfile(memberId: string) {
     return {
       error: "Từ chối truy cập. Chỉ Admin hoặc Editor mới có quyền xoá hồ sơ.",
     };
+  }
+
+  // Validate ID là UUID hợp lệ trước khi nội suy vào filter .or()
+  if (typeof memberId !== "string" || !UUID_REGEX.test(memberId)) {
+    return { error: "Mã hồ sơ không hợp lệ." };
   }
 
   // 2. Check for existing relationships

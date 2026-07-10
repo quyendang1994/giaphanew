@@ -4,6 +4,26 @@ import Papa from "papaparse";
 
 const UTF8_BOM = "\uFEFF";
 
+// Ch\u1ED1ng CSV formula injection: c\u00E1c \u00F4 b\u1EAFt \u0111\u1EA7u b\u1EB1ng = + - @ (ho\u1EB7c tab/CR) c\u00F3 th\u1EC3
+// b\u1ECB Excel/Sheets hi\u1EC3u l\u00E0 c\u00F4ng th\u1EE9c. Th\u00EAm d\u1EA5u nh\u00E1y \u0111\u01A1n \u1EDF \u0111\u1EA7u \u0111\u1EC3 v\u00F4 hi\u1EC7u ho\u00E1.
+function sanitizeCsvCell<T>(value: T): T | string {
+  if (typeof value !== "string") return value;
+  if (/^[=+\-@\t\r]/.test(value)) {
+    return `'${value}`;
+  }
+  return value;
+}
+
+function sanitizeRows<T extends object>(rows: T[]): T[] {
+  return rows.map((row) => {
+    const clean: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+      clean[key] = sanitizeCsvCell(value);
+    }
+    return clean as T;
+  });
+}
+
 
 interface PersonDetailsPrivateRow {
   person_id: string;
@@ -27,8 +47,9 @@ export async function exportToCsvZip(data: {
   person_details_private?: PersonDetailsPrivateRow[];
   custom_events?: CustomEventRow[];
 }): Promise<Blob> {
-  const personsCsv = UTF8_BOM + Papa.unparse(data.persons);
-  const relationshipsCsv = UTF8_BOM + Papa.unparse(data.relationships);
+  const personsCsv = UTF8_BOM + Papa.unparse(sanitizeRows(data.persons));
+  const relationshipsCsv =
+    UTF8_BOM + Papa.unparse(sanitizeRows(data.relationships));
 
   const zip = new JSZip();
   zip.file("persons.csv", personsCsv);
@@ -37,12 +58,15 @@ export async function exportToCsvZip(data: {
   if (data.person_details_private && data.person_details_private.length > 0) {
     zip.file(
       "person_details_private.csv",
-      UTF8_BOM + Papa.unparse(data.person_details_private),
+      UTF8_BOM + Papa.unparse(sanitizeRows(data.person_details_private)),
     );
   }
 
   if (data.custom_events && data.custom_events.length > 0) {
-    zip.file("custom_events.csv", UTF8_BOM + Papa.unparse(data.custom_events));
+    zip.file(
+      "custom_events.csv",
+      UTF8_BOM + Papa.unparse(sanitizeRows(data.custom_events)),
+    );
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });

@@ -56,8 +56,12 @@ export default function UploadModal({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (selected) {
+      if (!selected.type.startsWith("image/")) {
+        setError("Vui lòng chọn file ảnh hợp lệ (JPG, PNG, WEBP, GIF).");
+        return;
+      }
       if (selected.size > 10 * 1024 * 1024) {
-        setError("File size must be less than 10MB");
+        setError("Dung lượng ảnh phải nhỏ hơn 10MB.");
         return;
       }
       setFile(selected);
