@@ -20,7 +20,7 @@ export default function Footer({
         )}
         <p className="flex items-center justify-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
           <a
-            href="https://github.com/homielab/giapha-os"
+            href="https://github.com/quyendang1994/giaphanew"
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold text-stone-600 hover:text-amber-700 transition-colors inline-flex items-center gap-1.5"
@@ -40,14 +40,9 @@ export default function Footer({
             Gia Phả OS
           </a>
           by
-          <a
-            href="https://homielab.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-green-600 hover:text-amber-700 transition-colors inline-flex items-center gap-1.5"
-          >
-            HomieLab
-          </a>
+          <span className="font-semibold text-green-600 inline-flex items-center gap-1.5">
+            Đặng Đình Quyền
+          </span>
         </p>
       </div>
     </footer>

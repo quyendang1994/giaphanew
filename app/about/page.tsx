@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Info, Mail, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Info, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 
 export default function AboutPage() {
@@ -80,38 +80,8 @@ export default function AboutPage() {
                     trong cơ sở dữ liệu Supabase mà bạn tạo và quản lý. Bạn có
                     thể xóa, xuất hoặc di chuyển dữ liệu bất cứ lúc nào.
                   </li>
-                  <li>
-                    <strong className="text-stone-800">Demo công khai:</strong>{" "}
-                    Trang demo tại{" "}
-                    <code className="bg-white border border-stone-200 px-1 py-0.5 rounded text-[13px] text-amber-700">
-                      giapha-os.homielab.com
-                    </code>{" "}
-                    sử dụng dữ liệu mẫu hư cấu, không chứa thông tin của người
-                    thật. Không nên nhập thông tin cá nhân thật vào trang demo.
-                  </li>
                 </ul>
               </div>
-
-              <div className="mt-8 mb-4 border-t border-stone-100 pt-8 flex items-center gap-3">
-                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-                  <Mail className="size-5" />
-                </div>
-                <h2 className="text-xl font-bold text-stone-900">
-                  Liên hệ & Góp ý
-                </h2>
-              </div>
-
-              <p className="text-stone-600 leading-relaxed text-[15px] mb-8">
-                Nếu bạn có bất kỳ thắc mắc, đề xuất tính năng, báo lỗi khi sử
-                dụng phần mềm, hoặc muốn thảo luận thì xin vui lòng gửi email về
-                địa chỉ:{` `}
-                <a
-                  href="mailto:giaphaos@homielab.com"
-                  className="font-semibold text-amber-700 hover:text-amber-600 transition-colors inline-flex items-center gap-1.5 mt-2"
-                >
-                  giaphaos@homielab.com
-                </a>
-              </p>
             </div>
           </div>
         </motion.div>
