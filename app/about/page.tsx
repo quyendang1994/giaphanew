@@ -1,8 +1,25 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Info, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
+
+const galleryPhotos = [
+  { src: "/about/le-ky-phuc-1.jpg", alt: "Mâm lễ dâng cúng tại Lễ Kỳ Phúc" },
+  {
+    src: "/about/le-ky-phuc-2.jpg",
+    alt: "Lễ vật của các gia đình họ Đặng Đình dâng lễ",
+  },
+  {
+    src: "/about/le-ky-phuc-3.jpg",
+    alt: "Mâm bánh chưng dâng lễ trong đền làng Thanh Hòa",
+  },
+  {
+    src: "/about/le-ky-phuc-4.jpg",
+    alt: "Gà lễ tạo hình cánh phượng trong Lễ Kỳ Phúc",
+  },
+];
 
 export default function AboutPage() {
   return (
@@ -25,63 +42,42 @@ export default function AboutPage() {
               <div className="p-3 bg-amber-100/50 text-amber-700 rounded-2xl">
                 <Info className="size-6" />
               </div>
-              <h1 className="title">Giới thiệu dự án</h1>
+              <h1 className="title">Giới thiệu về họ Đặng Đình</h1>
             </div>
 
             <div className="max-w-none">
-              <p className="text-stone-600 leading-relaxed text-[15px] mb-8">
-                <strong className="text-stone-800">Gia Phả OS</strong> là một
-                giải pháp mã nguồn mở được thiết kế giúp các dòng họ, gia đình
-                tự xây dựng và quản lý cây phả hệ của riêng mình. Dự án giúp bảo
-                tồn và truyền đạt lại thông tin cội nguồn một cách trực quan,
-                hiện đại, và đặc biệt là an toàn.
+              <p className="text-stone-600 leading-relaxed text-[15px]">
+                <strong className="text-stone-800">Họ Đặng Đình</strong> là một
+                dòng họ có truyền thống lâu đời, trải qua bao thế hệ vẫn gìn giữ
+                được những giá trị cội nguồn tốt đẹp. Cuốn gia phả điện tử này
+                được lập nên nhằm ghi lại công đức tổ tiên, lưu giữ thông tin các
+                thành viên trong dòng họ, để con cháu muôn đời sau luôn nhớ về
+                gốc rễ, biết ơn tiền nhân và tiếp nối truyền thống gia phong.
               </p>
+            </div>
+          </div>
 
-              <div className="mt-8 mb-4 border-t border-stone-100 pt-8 flex items-center gap-3">
-                <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl">
-                  <ShieldAlert className="size-5" />
+          <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-stone-200 mb-8">
+            <p className="text-stone-600 leading-relaxed text-[15px] mb-8">
+              Một vài hình ảnh của con cháu họ Đặng Đình trong dịp thành tâm dâng
+              lễ, tưởng nhớ tổ tiên và cầu mong bình an, phúc lộc cho cả dòng họ.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {galleryPhotos.map((photo) => (
+                <div
+                  key={photo.src}
+                  className="group relative aspect-3/4 rounded-2xl overflow-hidden border border-stone-200 bg-stone-100"
+                >
+                  <Image
+                    src={photo.src}
+                    alt={photo.alt}
+                    fill
+                    sizes="(max-width: 640px) 50vw, 320px"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
                 </div>
-                <h2 className="text-xl font-bold text-stone-900">
-                  Tuyên bố từ chối trách nhiệm & Quyền riêng tư
-                </h2>
-              </div>
-
-              <div className="bg-stone-50 border border-stone-200/60 rounded-2xl p-6 text-[14.5px] leading-relaxed">
-                <p className="font-bold text-stone-800 mb-4 bg-white py-2 px-3 rounded-lg border border-stone-200 shadow-sm inline-block">
-                  Dự án này chỉ cung cấp mã nguồn (source code). Không có bất kỳ
-                  dữ liệu cá nhân nào được thu thập hay lưu trữ bởi tác giả.
-                </p>
-
-                <ul className="space-y-4 text-stone-600 list-disc pl-5">
-                  <li>
-                    <strong className="text-stone-800">
-                      Tự lưu trữ hoàn toàn (Self-hosted):
-                    </strong>{" "}
-                    Khi bạn triển khai ứng dụng, toàn bộ dữ liệu gia phả (tên,
-                    ngày sinh, quan hệ, thông tin liên hệ...) được lưu trữ{" "}
-                    <strong className="text-stone-800">
-                      trong tài khoản Supabase của chính bạn
-                    </strong>
-                    . Tác giả dự án không có quyền truy cập vào database đó.
-                  </li>
-                  <li>
-                    <strong className="text-stone-800">
-                      Không thu thập dữ liệu:
-                    </strong>{" "}
-                    Không có analytics, không có tracking, không có telemetry,
-                    không có bất kỳ hình thức thu thập thông tin người dùng nào
-                    được tích hợp trong mã nguồn.
-                  </li>
-                  <li>
-                    <strong className="text-stone-800">
-                      Bạn kiểm soát dữ liệu của bạn:
-                    </strong>{" "}
-                    Mọi dữ liệu gia đình, thông tin thành viên đều nằm hoàn toàn
-                    trong cơ sở dữ liệu Supabase mà bạn tạo và quản lý. Bạn có
-                    thể xóa, xuất hoặc di chuyển dữ liệu bất cứ lúc nào.
-                  </li>
-                </ul>
-              </div>
+              ))}
             </div>
           </div>
         </motion.div>
