@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import localFont from "next/font/local";
 import config from "./config";
@@ -22,6 +22,16 @@ const thuphap = localFont({
 export const metadata: Metadata = {
   title: config.siteName,
   description: config.siteName,
+  // iOS: chạy toàn màn hình khi thêm vào màn hình chính
+  appleWebApp: {
+    capable: true,
+    title: config.siteName,
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#fafaf9",
 };
 
 export default function RootLayout({
