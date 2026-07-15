@@ -1,4 +1,5 @@
 import config from "@/app/config";
+import BackButton from "@/components/BackButton";
 import DashboardHeader from "@/components/DashboardHeader";
 import Footer from "@/components/Footer";
 import LogoutButton from "@/components/LogoutButton";
@@ -78,6 +79,7 @@ export default async function DashboardLayout({
     <UserProvider user={user} profile={profile}>
       <div className="min-h-screen bg-antique text-primary flex flex-col font-sans">
         <DashboardHeader />
+        <BackButton />
         {children}
         <Footer
           className="mt-auto bg-white border-t border-stone-200"
