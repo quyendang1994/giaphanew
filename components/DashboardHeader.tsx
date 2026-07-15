@@ -1,5 +1,6 @@
 import config from "@/app/config";
 import HeaderMenu from "@/components/HeaderMenu";
+import ShimmerText from "@/components/ShimmerText";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -21,8 +22,8 @@ export default function DashboardHeader() {
                 sizes="32px"
               />
             </div>
-            <h1 className="text-xl sm:text-2xl font-serif font-bold text-stone-800 group-hover:text-amber-700 transition-colors">
-              {config.siteName}
+            <h1 className="text-xl sm:text-2xl font-serif font-bold">
+              <ShimmerText text={config.siteName} />
             </h1>
           </Link>
         </div>

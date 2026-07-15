@@ -1,3 +1,4 @@
+import AncestralCouplets from "@/components/AncestralCouplets";
 import { getTodayLunar } from "@/utils/dateHelpers";
 import { computeEvents } from "@/utils/eventHelpers";
 import { getIsAdmin, getSupabase } from "@/utils/supabase/queries";
@@ -151,6 +152,7 @@ export default async function DashboardLaunchpad() {
 
   return (
     <main className="flex-1 flex flex-col p-4 sm:p-8 max-w-7xl mx-auto w-full">
+      <AncestralCouplets />
       {/* <div className="mb-8 sm:mb-12 text-center sm:text-left">
         <h1 className="title">Bảng điều khiển</h1>
       </div> */}
