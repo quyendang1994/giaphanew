@@ -15,13 +15,34 @@ function vnDateString(offsetDays: number): string {
   }).format(now);
 }
 
-// Chạy hằng ngày bởi Vercel Cron (vercel.json): nhắc các sự kiện
-// diễn ra hôm nay và ngày mai tới mọi thiết bị đã bật thông báo.
+// Giờ hiện tại (0-23) theo múi giờ Việt Nam
+function vnHour(): number {
+  return Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date()),
+  );
+}
+
+// Chạy 2 lần/ngày bởi Vercel Cron (vercel.json):
+// - Sáng (7h VN): nhắc sự kiện hôm nay + ngày mai
+// - Tối (18h VN): chỉ nhắc sự kiện ngày mai (hôm nay thường đã diễn ra xong)
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ?slot=morning|evening để test tay; mặc định suy từ giờ VN lúc chạy
+  const slotParam = new URL(request.url).searchParams.get("slot");
+  const slot =
+    slotParam === "morning" || slotParam === "evening"
+      ? slotParam
+      : vnHour() < 12
+        ? "morning"
+        : "evening";
 
   const supabase = createAdminClient();
   if (!supabase) {
@@ -33,12 +54,14 @@ export async function GET(request: Request) {
 
   const today = vnDateString(0);
   const tomorrow = vnDateString(1);
+  // Buổi tối chỉ nhắc sự kiện ngày mai
+  const targetDates = slot === "morning" ? [today, tomorrow] : [tomorrow];
 
   const [eventsRes, subsRes] = await Promise.all([
     supabase
       .from("custom_events")
       .select("name, event_date, location")
-      .in("event_date", [today, tomorrow]),
+      .in("event_date", targetDates),
     supabase.from("push_subscriptions").select("endpoint, p256dh, auth"),
   ]);
 
@@ -76,6 +99,7 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({
+    slot,
     events: events.length,
     subscriptions: subs.length,
     sent: totalSent,
