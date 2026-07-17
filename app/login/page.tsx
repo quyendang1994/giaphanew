@@ -31,6 +31,13 @@ export default function LoginPage() {
         setEmail(config.exampleEmail);
         setPassword(config.examplePassword);
       }
+
+      // Báo lỗi khi OAuth callback thất bại (/auth/callback redirect về đây)
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "oauth") {
+        setError("Đăng nhập Facebook thất bại, vui lòng thử lại.");
+        window.history.replaceState(null, "", "/login");
+      }
     }
   }, []);
 
@@ -40,6 +47,23 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleFacebookLogin = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "facebook",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+
+    // Thành công thì trình duyệt được chuyển sang Facebook, code dưới không chạy
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -320,6 +344,26 @@ export default function LoginPage() {
                 </span>
                 <div className="grow border-t border-stone-200"></div>
               </div>
+
+              {!isDemo && (
+                <button
+                  type="button"
+                  onClick={handleFacebookLogin}
+                  disabled={loading}
+                  className="w-full flex justify-center items-center gap-2.5 py-3.5 px-4 text-sm font-semibold rounded-xl text-white bg-[#1877F2] hover:bg-[#0f66d6] disabled:opacity-70 disabled:cursor-wait shadow-[0_2px_8px_-3px_rgba(24,119,242,0.5)] hover:shadow-md focus:outline-none transition-all duration-200"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                  Tiếp tục với Facebook
+                </button>
+              )}
 
               <button
                 type="button"

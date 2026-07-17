@@ -19,6 +19,10 @@ import { useUser } from "./UserProvider";
 export default function HeaderMenu() {
   const { user, isAdmin } = useUser();
   const userEmail = user?.email;
+  // Có khi đăng nhập bằng Facebook/OAuth (Supabase lưu vào user_metadata)
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const fullName = user?.user_metadata?.full_name as string | undefined;
+  const [avatarError, setAvatarError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -39,13 +43,26 @@ export default function HeaderMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full hover:bg-stone-100 transition-all duration-200 border border-transparent hover:border-stone-200"
       >
-        <div className="size-8 rounded-full bg-linear-to-br from-amber-200 to-amber-100 text-amber-800 flex items-center justify-center font-bold shadow-sm ring-1 ring-amber-300/50">
-          {userEmail ? (
+        <div className="size-8 rounded-full bg-linear-to-br from-amber-200 to-amber-100 text-amber-800 flex items-center justify-center font-bold shadow-sm ring-1 ring-amber-300/50 overflow-hidden">
+          {avatarUrl && !avatarError ? (
+            // Ảnh đại diện từ Facebook nằm trên CDN ngoài, dùng <img> thường
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl}
+              alt="Ảnh đại diện"
+              className="size-full object-cover"
+              referrerPolicy="no-referrer"
+              onError={() => setAvatarError(true)}
+            />
+          ) : userEmail ? (
             userEmail.charAt(0).toUpperCase()
           ) : (
             <UserCircle className="size-5" />
           )}
         </div>
+        <span className="hidden sm:block text-sm font-semibold text-stone-700 max-w-[140px] truncate">
+          {fullName || userEmail?.split("@")[0]}
+        </span>
         <ChevronDown
           className={`size-4 text-stone-500 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
         />
@@ -64,7 +81,14 @@ export default function HeaderMenu() {
               <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-0.5">
                 Tài khoản
               </p>
-              <p className="text-sm font-medium text-stone-900 truncate">
+              {fullName && (
+                <p className="text-sm font-semibold text-stone-900 truncate">
+                  {fullName}
+                </p>
+              )}
+              <p
+                className={`truncate ${fullName ? "text-xs text-stone-500" : "text-sm font-medium text-stone-900"}`}
+              >
                 {userEmail}
               </p>
             </div>
