@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gia Phả Đặng Tộc — Luồng tạo tài khoản</title>
+<script>
+  (function () {
+    const saved = localStorage.getItem('theme');
+    const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', dark);
+  })();
+</script>
+<style>
+  :root {
+    --bg: #FAF9F5; --surface: #FFFFFF; --surface2: #F0EEE6;
+    --ink: #141413; --body: #3D3D3A; --muted: #87867F;
+    --line: #D1CFC5; --line-soft: #E6E3DA;
+    --clay: #D97757; --clay-soft: rgba(217,119,87,0.10);
+    --olive: #788C5D; --olive-soft: rgba(120,140,93,0.12);
+    --gold: #C9A45C; --blue: #5B7E96;
+    --zone: rgba(20,20,19,0.025); --zone-line: #D1CFC5;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  html.dark {
+    --bg: #141413; --surface: #1F1F1D; --surface2: #2A2A28;
+    --ink: #FAF9F5; --body: #D1CFC5; --muted: #87867F;
+    --line: #3D3D3A; --line-soft: #2A2A28;
+    --clay: #E48A6E; --clay-soft: rgba(228,138,110,0.14);
+    --olive: #9DB07C; --olive-soft: rgba(157,176,124,0.16);
+    --gold: #D4B36F; --blue: #7FA3BC;
+    --zone: rgba(250,249,245,0.03); --zone-line: #3D3D3A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--body); font-family: var(--sans);
+    -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* ── thanh trên ─────────────────────────── */
+  .bar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 12px 20px; border-bottom: 1px solid var(--line-soft); flex: none;
+  }
+  .bar h1 { font-family: var(--serif); font-weight: 500; font-size: 19px; color: var(--ink); letter-spacing: -0.01em; }
+  .bar .sub { font-family: var(--mono); font-size: 10.5px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .spacer { flex: 1; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+    padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px;
+    background: transparent; color: var(--muted); cursor: pointer; transition: all .15s ease;
+  }
+  .chip:hover { color: var(--ink); border-color: var(--muted); }
+  .chip.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  .barbtn {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .barbtn:hover { color: var(--ink); border-color: var(--muted); }
+
+  /* ── sân khấu ───────────────────────────── */
+  .stage { flex: 1; position: relative; min-height: 0; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+  .stage svg.dragging { cursor: grabbing; }
+
+  /* zones */
+  .zone rect { fill: var(--zone); stroke: var(--zone-line); stroke-width: 1; stroke-dasharray: 5 5; rx: 16; }
+  .zone .ztitle { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; fill: var(--muted); }
+  .zone .zsub { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); opacity: 0.75; }
+
+  /* nodes */
+  .node { cursor: pointer; }
+  .node rect { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; rx: 10; transition: stroke .15s ease; }
+  .node:hover rect { stroke: var(--muted); }
+  .node.sel rect { stroke: var(--clay) !important; stroke-width: 2; }
+  .node .t  { font-family: var(--sans); font-size: 14.5px; font-weight: 600; fill: var(--ink); pointer-events: none; }
+  .node .m  { font-family: var(--mono); font-size: 11px; fill: var(--muted); pointer-events: none; }
+  .node .k  { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--clay); pointer-events: none; }
+  .node.gate rect { fill: var(--clay-soft); stroke: var(--clay); }
+  .node.store rect { fill: var(--surface2); }
+  .node.do rect { fill: var(--olive-soft); stroke: var(--olive); }
+  .node.ext rect { stroke-dasharray: 6 3; }
+
+  /* edges */
+  .edge { stroke: var(--muted); stroke-width: 1.6; fill: none; marker-end: url(#a-mut); transition: opacity .2s ease, stroke .2s ease; }
+  .edge.dash { stroke-dasharray: 5 4; }
+  .elbl { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); transition: opacity .2s ease; }
+
+  /* flow highlighting */
+  .stage.flowing .edge { opacity: 0.13; }
+  .stage.flowing .elbl { opacity: 0.13; }
+  .stage.flowing .node { opacity: 0.30; }
+  .stage.flowing .zone { opacity: 0.45; }
+  .stage.flowing .edge.lit {
+    opacity: 1; stroke: var(--clay); marker-end: url(#a-clay);
+    stroke-dasharray: 7 5; animation: march 0.9s linear infinite;
+  }
+  .stage.flowing .elbl.lit { opacity: 1; fill: var(--clay); }
+  .stage.flowing .node.lit { opacity: 1; }
+  .stage.flowing .node.lit rect { stroke: var(--clay); }
+  @keyframes march { to { stroke-dashoffset: -12; } }
+  @media (prefers-reduced-motion: reduce) { .stage.flowing .edge.lit { animation: none; } }
+
+  /* ── thẻ nổi ────────────────────────────── */
+  .card {
+    position: absolute; max-width: 380px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 36px 14px 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+  }
+  .card .close {
+    position: absolute; top: 8px; right: 8px; width: 22px; height: 22px;
+    border: 1px solid var(--line); border-radius: 6px; background: transparent;
+    color: var(--muted); font-size: 13px; line-height: 1; cursor: pointer;
+  }
+  .card .close:hover { color: var(--ink); border-color: var(--muted); }
+  #detail { right: 16px; bottom: 16px; width: 350px; }
+  #detail.hide { display: none; }
+  #detail h3 { font-family: var(--serif); font-weight: 500; font-size: 17px; color: var(--ink); margin-bottom: 2px; }
+  #detail .meta { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-bottom: 8px; }
+  #detail p { font-size: 12.5px; line-height: 1.55; }
+  #detail p code, #flowcap code { font-family: var(--mono); font-size: 11px; color: var(--clay); }
+  #flowcap { left: 16px; bottom: 16px; max-width: 470px; display: none; }
+  #flowcap.show { display: block; }
+  #flowcap .fname { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--clay); margin-bottom: 6px; }
+  #flowcap ol { margin-left: 18px; }
+  #flowcap li { font-size: 12.5px; line-height: 1.55; }
+
+  /* ── điều khiển zoom ────────────────────── */
+  .zoomctl {
+    position: absolute; top: 12px; left: 16px; display: flex; gap: 6px; align-items: center;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+  }
+  .zoomctl .zlevel {
+    padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+    min-width: 52px; text-align: center;
+  }
+  .zoomctl button {
+    padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--surface); color: var(--muted); font-family: var(--mono); font-size: 11px; cursor: pointer;
+  }
+  .zoomctl button:hover { color: var(--ink); border-color: var(--muted); }
+
+  .src { position: absolute; top: 14px; right: 16px; font-family: var(--mono); font-size: 10px; color: var(--muted); opacity: 0.8; }
+
+  @media (max-width: 880px) {
+    body { overflow: auto; }
+    .stage { min-height: 70vh; }
+    #detail { position: static; width: auto; margin: 10px 16px; }
+    #flowcap { position: static; margin: 0 16px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div>
+    <h1>Gia Phả Đặng Tộc — Luồng tạo tài khoản</h1>
+    <div class="sub">Next.js App Router · Supabase Auth · Postgres triggers</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="chips" id="chips">
+    <button class="chip on" data-flow="all">Tất cả</button>
+    <button class="chip" data-flow="first">User đầu tiên (Admin)</button>
+    <button class="chip" data-flow="member">Thành viên mới</button>
+    <button class="chip" data-flow="gate">Sau đăng nhập</button>
+    <button class="chip" data-flow="admin">Admin tạo hộ</button>
+    <button class="chip" data-flow="setup">Thiếu schema</button>
+  </div>
+  <button class="barbtn" id="themeToggle">Giao diện</button>
+</div>
+
+<div class="stage" id="stage">
+<svg id="svg" viewBox="0 0 1560 980" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sơ đồ kiến trúc luồng tạo tài khoản">
+  <defs>
+    <marker id="a-mut" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted)"/>
+    </marker>
+    <marker id="a-clay" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill: var(--clay)"/>
+    </marker>
+  </defs>
+  <g id="svg-content">
+
+  <!-- ── vùng ─────────────────────────────── -->
+  <g class="zone" id="z-client">
+    <rect x="40" y="110" width="300" height="830"/>
+    <text class="ztitle" x="60" y="140">Trình duyệt</text>
+    <text class="zsub" x="60" y="158">app/login · supabase-js</text>
+  </g>
+  <g class="zone" id="z-auth">
+    <rect x="400" y="110" width="400" height="440"/>
+    <text class="ztitle" x="420" y="140">Supabase Auth</text>
+    <text class="zsub" x="420" y="158">GoTrue · schema auth</text>
+  </g>
+  <g class="zone" id="z-pg">
+    <rect x="860" y="110" width="660" height="440"/>
+    <text class="ztitle" x="880" y="140">Postgres (schema public)</text>
+    <text class="zsub" x="880" y="158">triggers · RPC · RLS — docs/schema.sql</text>
+  </g>
+  <g class="zone" id="z-next">
+    <rect x="400" y="600" width="1120" height="340"/>
+    <text class="ztitle" x="420" y="630">Next.js Server (App Router)</text>
+    <text class="zsub" x="420" y="648">server components · server actions</text>
+  </g>
+
+  <!-- ── cạnh ─────────────────────────────── -->
+  <path class="edge" id="e-form-sb"    d="M180,280 L180,330"/>
+  <path class="edge" id="e-sb-gotrue"  d="M295,355 C 355,355 365,228 430,225"/>
+  <path class="edge dash" id="e-gotrue-sb" d="M430,252 C 374,260 364,342 295,368"/>
+  <path class="edge" id="e-gotrue-users" d="M600,270 L600,320"/>
+  <path class="edge" id="e-users-trgc" d="M770,345 C 835,335 838,235 890,228"/>
+  <path class="edge" id="e-users-trgn" d="M770,375 C 1000,390 1090,245 1210,238"/>
+  <path class="edge" id="e-trgn-prof"  d="M1350,280 L1350,340"/>
+  <path class="edge dash" id="e-users-mail" d="M600,400 L600,440"/>
+  <path class="edge" id="e-sb-msg"     d="M180,426 L180,460"/>
+  <path class="edge" id="e-msg-proxy"  d="M295,520 C 380,545 430,600 495,660"/>
+  <path class="edge" id="e-proxy-dash" d="M595,730 L595,750"/>
+  <path class="edge dash" id="e-proxy-setup" d="M760,675 C 950,632 1060,640 1150,678"/>
+  <path class="edge" id="e-dash-prof"  d="M760,775 C 1060,770 1300,570 1345,452"/>
+  <path class="edge" id="e-dash-pending" d="M760,782 C 778,774 788,760 800,750"/>
+  <path class="edge dash" id="e-msg-setup" d="M295,500 C 700,520 1235,590 1248,660"/>
+  <path class="edge" id="e-adminui-action" d="M295,820 C 350,824 372,886 430,892"/>
+  <path class="edge" id="e-action-rpc" d="M760,890 C 980,884 1030,580 1035,442"/>
+  <path class="edge" id="e-rpc-users"  d="M890,385 C 845,385 822,370 774,365"/>
+  <path class="edge" id="e-rpc-prof"   d="M1180,390 L1210,390"/>
+
+  <!-- nhãn cạnh -->
+  <text class="elbl" data-e="e-sb-gotrue" x="300" y="316">auth.signUp({email, password})</text>
+  <text class="elbl" data-e="e-gotrue-sb" x="306" y="348">JSON: access + refresh token</text>
+  <text class="elbl" data-e="e-gotrue-users" x="612" y="302">INSERT auth.users</text>
+  <text class="elbl" data-e="e-users-trgc" x="792" y="290">BEFORE INSERT</text>
+  <text class="elbl" data-e="e-users-trgn" x="985" y="332" text-anchor="middle">AFTER INSERT</text>
+  <text class="elbl" data-e="e-trgn-prof" x="1362" y="316">INSERT profile</text>
+  <text class="elbl" data-e="e-users-mail" x="612" y="426">email xác nhận (nếu bật)</text>
+  <text class="elbl" data-e="e-sb-msg" x="192" y="448">kết quả</text>
+  <text class="elbl" data-e="e-msg-proxy" x="330" y="588">GET /dashboard (kèm cookie sb-*)</text>
+  <text class="elbl" data-e="e-proxy-dash" x="607" y="745">token hợp lệ</text>
+  <text class="elbl" data-e="e-proxy-setup" x="955" y="628" text-anchor="middle">thiếu bảng profiles → /setup</text>
+  <text class="elbl" data-e="e-dash-prof" x="1080" y="758" text-anchor="middle">getProfile() · đọc is_active</text>
+  <text class="elbl" data-e="e-dash-pending" x="790" y="768" text-anchor="middle">false</text>
+  <text class="elbl" data-e="e-msg-setup" x="770" y="548" text-anchor="middle">lỗi "relation … does not exist" → /setup</text>
+  <text class="elbl" data-e="e-action-rpc" x="900" y="866">supabase.rpc('admin_create_user')</text>
+  <text class="elbl" data-e="e-rpc-users" x="790" y="398">INSERT</text>
+
+  <!-- ── nút: trình duyệt ─────────────────── -->
+  <g class="node" data-k="form">
+    <rect x="65" y="180" width="230" height="100"/>
+    <text class="t" x="85" y="210">Trang /login — Đăng ký</text>
+    <text class="m" x="85" y="232">app/login/page.tsx</text>
+    <text class="m" x="85" y="250">email · mật khẩu · xác nhận</text>
+    <text class="m" x="85" y="266">client component</text>
+  </g>
+  <g class="node" data-k="sbclient">
+    <rect x="65" y="330" width="230" height="96"/>
+    <text class="t" x="85" y="360">supabase-js (browser)</text>
+    <text class="m" x="85" y="382">utils/supabase/client.ts</text>
+    <text class="m" x="85" y="398">createBrowserClient</text>
+    <text class="m" x="85" y="414">tự ghi cookie sb-*-auth-token</text>
+  </g>
+  <g class="node" data-k="msg">
+    <rect x="65" y="460" width="230" height="90"/>
+    <text class="t" x="85" y="490">Xử lý kết quả</text>
+    <text class="m" x="85" y="512">session → /dashboard</text>
+    <text class="m" x="85" y="528">không session → thông báo</text>
+    <text class="m" x="85" y="544">"chờ admin kích hoạt"</text>
+  </g>
+  <g class="node" data-k="adminui">
+    <rect x="65" y="770" width="230" height="90"/>
+    <text class="t" x="85" y="800">Trang quản lý user</text>
+    <text class="m" x="85" y="822">components/AdminUserList.tsx</text>
+    <text class="m" x="85" y="838">/dashboard/users (admin)</text>
+  </g>
+
+  <!-- ── nút: supabase auth ───────────────── -->
+  <g class="node ext" data-k="gotrue">
+    <rect x="430" y="180" width="340" height="90"/>
+    <text class="t" x="450" y="210">GoTrue Auth API</text>
+    <text class="m" x="450" y="232">POST /auth/v1/signup</text>
+    <text class="m" x="450" y="248">phát hiện email trùng (identities rỗng)</text>
+  </g>
+  <g class="node store" data-k="authusers">
+    <rect x="430" y="320" width="340" height="80"/>
+    <text class="t" x="450" y="350">Bảng auth.users</text>
+    <text class="m" x="450" y="372">id · email · email_confirmed_at</text>
+  </g>
+  <g class="node ext" data-k="mail">
+    <rect x="430" y="440" width="340" height="70"/>
+    <text class="t" x="450" y="468">Email xác nhận</text>
+    <text class="m" x="450" y="488">SMTP Supabase · tuỳ cấu hình dự án</text>
+  </g>
+
+  <!-- ── nút: postgres ────────────────────── -->
+  <g class="node gate" data-k="trgconfirm">
+    <rect x="890" y="180" width="290" height="100"/>
+    <text class="t" x="910" y="208">handle_first_user_confirmation</text>
+    <text class="k" x="910" y="228">trigger BEFORE INSERT</text>
+    <text class="m" x="910" y="248">user đầu tiên → tự xác nhận email</text>
+    <text class="m" x="910" y="264">docs/schema.sql:289</text>
+  </g>
+  <g class="node gate" data-k="trgnew">
+    <rect x="1210" y="180" width="280" height="100"/>
+    <text class="t" x="1230" y="208">handle_new_user</text>
+    <text class="k" x="1230" y="228">trigger AFTER INSERT</text>
+    <text class="m" x="1230" y="248">đầu tiên → admin · sau → member</text>
+    <text class="m" x="1230" y="264">docs/schema.sql:262</text>
+  </g>
+  <g class="node do" data-k="rpc">
+    <rect x="890" y="340" width="290" height="100"/>
+    <text class="t" x="910" y="368">RPC admin_create_user</text>
+    <text class="m" x="910" y="390">SECURITY DEFINER · chỉ admin gọi</text>
+    <text class="m" x="910" y="406">tạo auth.users + profiles</text>
+    <text class="m" x="910" y="422">chọn sẵn role · is_active</text>
+  </g>
+  <g class="node store" data-k="profiles">
+    <rect x="1210" y="340" width="280" height="110"/>
+    <text class="t" x="1230" y="368">Bảng public.profiles</text>
+    <text class="m" x="1230" y="390">id · role · is_active</text>
+    <text class="m" x="1230" y="406">RLS: tự xem của mình</text>
+    <text class="m" x="1230" y="422">admin xem tất cả</text>
+  </g>
+
+  <!-- ── nút: next.js server ──────────────── -->
+  <g class="node gate" data-k="proxy">
+    <rect x="430" y="660" width="330" height="70"/>
+    <text class="t" x="450" y="686">proxy.ts (middleware)</text>
+    <text class="m" x="450" y="706">updateSession(): làm mới token → Set-Cookie</text>
+    <text class="m" x="450" y="720">utils/supabase/middleware.ts</text>
+  </g>
+  <g class="node" data-k="dashlayout">
+    <rect x="430" y="750" width="330" height="90"/>
+    <text class="t" x="450" y="778">/dashboard layout</text>
+    <text class="m" x="450" y="800">app/dashboard/layout.tsx</text>
+    <text class="m" x="450" y="816">getUser() → getProfile() · chỉ đọc cookie</text>
+    <text class="m" x="450" y="830">cổng kiểm tra is_active</text>
+  </g>
+  <g class="node gate" data-k="pending">
+    <rect x="800" y="660" width="300" height="90"/>
+    <text class="t" x="820" y="690">Màn "Tài khoản chờ duyệt"</text>
+    <text class="m" x="820" y="712">is_active = false</text>
+    <text class="m" x="820" y="728">chờ admin kích hoạt mới xem được</text>
+  </g>
+  <g class="node ext" data-k="setup">
+    <rect x="1150" y="660" width="200" height="80"/>
+    <text class="t" x="1170" y="690">/setup</text>
+    <text class="m" x="1170" y="712">hướng dẫn chạy schema</text>
+  </g>
+  <g class="node" data-k="action">
+    <rect x="430" y="860" width="330" height="70"/>
+    <text class="t" x="450" y="886">Server Action adminCreateUser</text>
+    <text class="m" x="450" y="906">app/actions/user.ts</text>
+    <text class="m" x="450" y="920">revalidatePath('/dashboard/users')</text>
+  </g>
+
+  </g><!-- /svg-content -->
+</svg>
+
+  <div class="zoomctl">
+    <div class="zlevel" id="zlevel">100%</div>
+    <button id="zreset" title="Về 100%">Reset</button>
+  </div>
+
+  <div class="src">app/login/page.tsx · proxy.ts · app/actions/user.ts · docs/schema.sql</div>
+
+  <div class="card" id="flowcap">
+    <button class="close" data-close="flowcap" aria-label="Đóng">×</button>
+    <div class="fname" id="f-name"></div>
+    <ol id="f-steps"></ol>
+  </div>
+
+  <div class="card" id="detail">
+    <button class="close" data-close="detail" aria-label="Đóng">×</button>
+    <h3 id="d-title">Bấm vào bất kỳ khối nào</h3>
+    <div class="meta" id="d-meta">chi tiết thành phần</div>
+    <p id="d-body">Mỗi khối đều bấm được. Các nút phía trên sẽ làm sáng đường đi của từng luồng — User đầu tiên, Thành viên mới, Sau đăng nhập, Admin tạo hộ, Thiếu schema. Kéo để di chuyển, lăn chuột để phóng to.</p>
+  </div>
+</div>
+
+<script>
+const DETAIL = {
+  form:       { t:"Trang /login — form Đăng ký", m:"client component", b:"Một trang gộp cả Đăng nhập và Đăng ký (chuyển bằng nút toggle). Khi đăng ký, kiểm tra <b>mật khẩu xác nhận khớp</b> ngay trên client trước khi gọi <code>auth.signUp()</code>. Trên domain demo, form tự điền tài khoản mẫu và chặn đăng ký." },
+  sbclient:   { t:"supabase-js (browser)", m:"utils/supabase/client.ts", b:"<code>createBrowserClient</code> từ <code>@supabase/ssr</code>. GoTrue <b>không</b> trả <code>Set-Cookie</code> — token về trong JSON body, rồi <b>chính thư viện tự ghi</b> vào <code>document.cookie</code> dưới tên <code>sb-&lt;ref&gt;-auth-token</code> (có thể chia mảnh .0, .1). Nhờ đó server component đọc lại được session. Đăng ký/đăng nhập gọi thẳng tới Supabase, không qua API route của Next.js." },
+  msg:        { t:"Xử lý kết quả signUp", m:"app/login/page.tsx:76-115", b:"4 nhánh: (1) lỗi thiếu bảng → <code>/setup</code>; (2) <code>identities</code> rỗng → email đã đăng ký; (3) có session → vào <code>/dashboard</code>; (4) không có session → thử <code>signInWithPassword</code> ngay (bắt trường hợp user đầu tiên được tự xác nhận), nếu vẫn không được thì hiện \"Đăng ký thành công, chờ admin kích hoạt\"." },
+  adminui:    { t:"Trang quản lý user", m:"components/AdminUserList.tsx", b:"Admin có thể tạo tài khoản hộ người thân: nhập email, mật khẩu, chọn <code>role</code> (admin / editor / member) và trạng thái kích hoạt, rồi gọi server action <code>adminCreateUser</code>." },
+  gotrue:     { t:"GoTrue Auth API", m:"Supabase Auth · dịch vụ ngoài", b:"Nhận <code>POST /auth/v1/signup</code>, băm mật khẩu, ghi vào <code>auth.users</code>. Nếu email đã tồn tại, Supabase trả về user \"giả\" với mảng <code>identities</code> rỗng — client dựa vào đó để báo trùng email. Việc có gửi email xác nhận hay không do cấu hình Auth của dự án." },
+  authusers:  { t:"Bảng auth.users", m:"schema auth · Supabase quản lý", b:"Nguồn sự thật về danh tính. Hai trigger gắn trực tiếp vào bảng này: <code>BEFORE INSERT</code> tự xác nhận user đầu tiên, <code>AFTER INSERT</code> tạo dòng tương ứng trong <code>public.profiles</code>." },
+  mail:       { t:"Email xác nhận", m:"tuỳ cấu hình Supabase", b:"Nếu dự án bật \"Confirm email\", user mới (trừ user đầu tiên) phải bấm link trong email trước khi đăng nhập được — đó là lý do <code>signUp</code> trả về <code>session = null</code> và client hiện thông báo chờ." },
+  trgconfirm: { t:"handle_first_user_confirmation", m:"trigger BEFORE INSERT · docs/schema.sql:289", b:"Chạy <b>trước khi</b> dòng user được ghi: nếu <code>auth.users</code> chưa có ai, gán luôn <code>email_confirmed_at = NOW()</code>. Nhờ vậy người lập gia phả đầu tiên đăng nhập được ngay, không cần email xác nhận." },
+  trgnew:     { t:"handle_new_user", m:"trigger AFTER INSERT · docs/schema.sql:262", b:"Chạy <b>sau khi</b> user được ghi (SECURITY DEFINER): đếm <code>auth.users</code> — nếu là user đầu tiên thì tạo profile <code>role = admin</code>, ngược lại <code>role = member</code>. <b>Lưu ý:</b> câu INSERT hiện đặt <code>is_active = true</code> cho mọi user, dù UI mô tả luồng \"chờ admin duyệt\"." },
+  rpc:        { t:"RPC admin_create_user", m:"SECURITY DEFINER · docs/schema.sql:427", b:"Đường tạo tài khoản thứ hai, dành cho admin: kiểm tra người gọi có <code>role = admin</code>, rồi INSERT thẳng vào <code>auth.users</code> (mật khẩu băm bằng <code>crypt()</code>) và UPSERT <code>profiles</code> với role + trạng thái kích hoạt admin đã chọn." },
+  profiles:   { t:"Bảng public.profiles", m:"id · role · is_active", b:"Hồ sơ phân quyền, khoá ngoại 1-1 với <code>auth.users</code>. RLS: mỗi người chỉ SELECT được profile của mình, admin xem tất cả. Cột <code>is_active</code> là cổng quyết định có được xem nội dung gia phả hay không." },
+  proxy:      { t:"proxy.ts (middleware)", m:"utils/supabase/middleware.ts", b:"Chạy trước mọi request. Đọc cookie <code>sb-*</code> gửi kèm, gọi <code>getUser()</code> — nếu access token hết hạn thì dùng refresh token lấy token mới, và callback <code>setAll</code> (dòng 27-37) là <b>chỗ duy nhất server trả <code>Set-Cookie</code></b> về trình duyệt. Cũng chặn <code>/dashboard</code> khi chưa đăng nhập và chuyển <code>/setup</code> khi thiếu bảng <code>profiles</code>." },
+  dashlayout: { t:"/dashboard layout", m:"server component · app/dashboard/layout.tsx", b:"Chạy trên server ở mọi trang dashboard: <code>getUser()</code> — chưa đăng nhập thì <code>redirect('/login')</code>; <code>getProfile()</code> — đọc <code>is_active</code> qua RLS. Chỉ <b>đọc</b> cookie (việc ghi/làm mới đã do middleware lo). <code>false</code> → render màn \"Tài khoản chờ duyệt\" thay vì nội dung." },
+  pending:    { t:"Màn \"Tài khoản chờ duyệt\"", m:"app/dashboard/layout.tsx:26-76", b:"Tài khoản đã tạo xong nhưng <code>is_active = false</code>: chỉ thấy thông báo đề nghị liên hệ quản trị dòng họ, kèm nút đăng xuất. Admin bật kích hoạt trong trang quản lý user là vào được." },
+  setup:      { t:"/setup", m:"đường lỗi khi thiếu schema", b:"Nếu <code>signUp</code> trả lỗi \"relation … does not exist\" nghĩa là database chưa chạy <code>docs/schema.sql</code> — client chuyển hướng sang trang hướng dẫn cài đặt." },
+  action:     { t:"Server Action adminCreateUser", m:"app/actions/user.ts:38", b:"Chạy trên server với session của admin: validate email/mật khẩu/role rồi gọi <code>supabase.rpc('admin_create_user')</code>. Xong thì <code>revalidatePath('/dashboard/users')</code> để danh sách user cập nhật ngay." },
+};
+
+const FLOWS = {
+  first: {
+    name: "Đăng ký — user đầu tiên trở thành Admin",
+    edges: ["e-form-sb","e-sb-gotrue","e-gotrue-users","e-users-trgc","e-users-trgn","e-trgn-prof","e-gotrue-sb","e-sb-msg","e-msg-proxy","e-proxy-dash"],
+    nodes: ["form","sbclient","gotrue","authusers","trgconfirm","trgnew","profiles","msg","proxy","dashlayout"],
+    steps: ["Form gọi <code>auth.signUp()</code> từ trình duyệt",
+            "Trigger <code>BEFORE INSERT</code>: chưa có ai → tự xác nhận email",
+            "Trigger <code>AFTER INSERT</code>: tạo profile <code>role = admin</code>, <code>is_active = true</code>",
+            "Client thử <code>signInWithPassword</code> ngay → GoTrue trả token trong <b>JSON</b>, supabase-js <b>tự ghi cookie</b> <code>sb-*-auth-token</code>",
+            "Chuyển sang <code>/dashboard</code> — request mang cookie qua middleware rồi tới layout"]
+  },
+  member: {
+    name: "Đăng ký — thành viên tiếp theo",
+    edges: ["e-form-sb","e-sb-gotrue","e-gotrue-users","e-users-trgn","e-trgn-prof","e-users-mail","e-sb-msg"],
+    nodes: ["form","sbclient","gotrue","authusers","trgnew","profiles","mail","msg"],
+    steps: ["Form gọi <code>auth.signUp()</code>; email trùng → <code>identities</code> rỗng → báo lỗi",
+            "Trigger <code>AFTER INSERT</code> tạo profile <code>role = member</code>",
+            "Nếu dự án bật xác nhận email → Supabase gửi mail, chưa có session",
+            "Client hiện \"Đăng ký thành công, chờ admin kích hoạt\" và quay về form đăng nhập"]
+  },
+  gate: {
+    name: "Sau đăng nhập — cookie, middleware và cổng is_active",
+    edges: ["e-msg-proxy","e-proxy-dash","e-dash-prof","e-dash-pending"],
+    nodes: ["msg","proxy","dashlayout","profiles","pending"],
+    steps: ["Trình duyệt gửi request kèm cookie <code>sb-*-auth-token</code>",
+            "<code>proxy.ts → updateSession()</code>: xác thực, làm mới token nếu hết hạn — đây là chỗ duy nhất server trả <code>Set-Cookie</code>",
+            "Layout <code>getUser()</code> — chưa đăng nhập thì <code>redirect('/login')</code>",
+            "<code>getProfile()</code> đọc <code>is_active</code> qua RLS: <code>false</code> → màn \"Tài khoản chờ duyệt\" · <code>true</code> → nội dung gia phả"]
+  },
+  admin: {
+    name: "Admin tạo tài khoản hộ",
+    edges: ["e-adminui-action","e-action-rpc","e-rpc-users","e-rpc-prof"],
+    nodes: ["adminui","action","rpc","authusers","profiles"],
+    steps: ["Admin điền form trong <code>AdminUserList</code> → server action <code>adminCreateUser</code>",
+            "Action validate rồi gọi <code>supabase.rpc('admin_create_user')</code>",
+            "RPC (SECURITY DEFINER) kiểm tra người gọi là admin, INSERT <code>auth.users</code> + UPSERT <code>profiles</code>",
+            "<code>revalidatePath</code> làm mới danh sách user"]
+  },
+  setup: {
+    name: "Đường lỗi — database chưa có schema",
+    edges: ["e-form-sb","e-sb-gotrue","e-msg-setup","e-proxy-setup"],
+    nodes: ["form","sbclient","gotrue","msg","proxy","setup"],
+    steps: ["<code>auth.signUp()</code> trả lỗi \"relation … does not exist\" → client chuyển <code>/setup</code>",
+            "Middleware cũng tự kiểm tra: SELECT thử bảng <code>profiles</code> trên <code>/login</code> và <code>/dashboard</code>",
+            "Lỗi <code>PGRST205</code>/<code>42P01</code> → redirect <code>/setup</code> để hướng dẫn chạy <code>docs/schema.sql</code>"]
+  }
+};
+
+const stage = document.getElementById('stage');
+const svg = document.getElementById('svg');
+const content = document.getElementById('svg-content');
+const nodes = document.querySelectorAll('.node');
+const edges = document.querySelectorAll('.edge');
+const elbls = document.querySelectorAll('.elbl');
+const chips = document.querySelectorAll('.chip');
+const fcap = document.getElementById('flowcap');
+const detail = document.getElementById('detail');
+
+function setFlow(key) {
+  chips.forEach(c => c.classList.toggle('on', c.dataset.flow === key));
+  edges.forEach(e => e.classList.remove('lit'));
+  elbls.forEach(l => l.classList.remove('lit'));
+  nodes.forEach(n => n.classList.remove('lit'));
+  if (key === 'all') { stage.classList.remove('flowing'); fcap.classList.remove('show'); return; }
+  const f = FLOWS[key];
+  stage.classList.add('flowing');
+  f.edges.forEach(id => document.getElementById(id)?.classList.add('lit'));
+  elbls.forEach(l => { if (f.edges.includes(l.dataset.e)) l.classList.add('lit'); });
+  f.nodes.forEach(k => document.querySelector(`.node[data-k="${k}"]`)?.classList.add('lit'));
+  document.getElementById('f-name').textContent = f.name;
+  document.getElementById('f-steps').innerHTML = f.steps.map(s => `<li>${s}</li>`).join('');
+  fcap.classList.add('show');
+}
+chips.forEach(c => c.addEventListener('click', () => setFlow(c.dataset.flow)));
+
+nodes.forEach(n => n.addEventListener('click', () => {
+  nodes.forEach(x => x.classList.remove('sel'));
+  n.classList.add('sel');
+  const d = DETAIL[n.dataset.k];
+  if (!d) return;
+  document.getElementById('d-title').textContent = d.t;
+  document.getElementById('d-meta').textContent = d.m;
+  document.getElementById('d-body').innerHTML = d.b;
+  detail.classList.remove('hide');
+}));
+
+document.querySelectorAll('.card .close').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.close;
+    if (id === 'detail') detail.classList.add('hide');
+    else fcap.classList.remove('show');
+  });
+});
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const dark = !document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark', dark);
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+});
+
+/* ── pan & zoom ─────────────────────────── */
+let scale = 1, tx = 0, ty = 0;
+const zlevel = document.getElementById('zlevel');
+function apply() {
+  content.setAttribute('transform', `translate(${tx},${ty}) scale(${scale})`);
+  zlevel.textContent = Math.round(scale * 100) + '%';
+}
+function toSvg(e) {
+  const pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+svg.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const p = toSvg(e);
+  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  const ns = Math.min(4, Math.max(0.35, scale * factor));
+  tx = p.x - (p.x - tx) * (ns / scale);
+  ty = p.y - (p.y - ty) * (ns / scale);
+  scale = ns;
+  apply();
+}, { passive: false });
+
+let dragging = false, moved = false;
+let start = null, startTx = 0, startTy = 0, startClient = null;
+svg.addEventListener('pointerdown', (e) => {
+  dragging = true; moved = false;
+  start = toSvg(e); startTx = tx; startTy = ty;
+  startClient = { x: e.clientX, y: e.clientY };
+  svg.classList.add('dragging');
+});
+window.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  if (Math.hypot(e.clientX - startClient.x, e.clientY - startClient.y) > 5) moved = true;
+  const p = toSvg(e);
+  tx = startTx + (p.x - start.x);
+  ty = startTy + (p.y - start.y);
+  apply();
+});
+window.addEventListener('pointerup', () => {
+  if (!dragging) return;
+  dragging = false;
+  svg.classList.remove('dragging');
+  if (moved) {
+    svg.addEventListener('click', (ev) => ev.stopPropagation(), { capture: true, once: true });
+  }
+});
+document.getElementById('zreset').addEventListener('click', () => {
+  scale = 1; tx = 0; ty = 0; apply();
+});
+</script>
+</body>
+</html>
