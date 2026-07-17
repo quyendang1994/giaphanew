@@ -538,3 +538,41 @@ USING ( bucket_id = 'gallery' AND (auth.uid() = owner OR EXISTS (SELECT 1 FROM p
 CREATE POLICY "Admin and owner can delete"
 ON storage.objects FOR DELETE
 USING ( bucket_id = 'gallery' AND (auth.uid() = owner OR EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')) );
+
+-- ========================================================
+-- 11. PUSH NOTIFICATIONS (Web Push)
+-- ========================================================
+
+-- Lưu subscription thông báo đẩy của từng thiết bị người dùng
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON public.push_subscriptions(user_id);
+
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- Người đăng nhập đọc được danh sách subscription (cần cho việc gửi
+-- thông báo bằng session của người tạo sự kiện). Endpoint không đủ để
+-- gửi push nếu thiếu VAPID private key nên rủi ro lộ thấp.
+DROP POLICY IF EXISTS "Authenticated users can read push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Authenticated users can read push subscriptions" ON public.push_subscriptions
+  FOR SELECT TO authenticated USING (true);
+
+-- Chỉ được thêm/sửa/xóa subscription của chính mình
+DROP POLICY IF EXISTS "Users can insert own push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can insert own push subscriptions" ON public.push_subscriptions
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can update own push subscriptions" ON public.push_subscriptions
+  FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can delete own push subscriptions" ON public.push_subscriptions
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);

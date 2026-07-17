@@ -138,6 +138,19 @@ export default function CustomEventModal({
           .from("custom_events")
           .insert([payload]);
         resultError = err;
+
+        // Sự kiện mới → gửi thông báo đẩy cho các thành viên (fire-and-forget)
+        if (!err) {
+          fetch("/api/push/notify-event", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name,
+              event_date: eventDate,
+              location: location || undefined,
+            }),
+          }).catch((e) => console.warn("Push notify failed:", e));
+        }
       }
 
       if (resultError) throw resultError;
