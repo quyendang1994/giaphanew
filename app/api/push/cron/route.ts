@@ -1,4 +1,9 @@
-import { sendToSubscriptions } from "@/utils/push/server";
+import {
+  buildEventPayload,
+  PUSH_SUB_COLUMNS,
+  pruneDeadSubscriptions,
+  sendToSubscriptions,
+} from "@/utils/push/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { NextResponse } from "next/server";
 
@@ -62,7 +67,7 @@ export async function GET(request: Request) {
       .from("custom_events")
       .select("name, event_date, location")
       .in("event_date", targetDates),
-    supabase.from("push_subscriptions").select("endpoint, p256dh, auth"),
+    supabase.from("push_subscriptions").select(PUSH_SUB_COLUMNS),
   ]);
 
   if (eventsRes.error || subsRes.error) {
@@ -75,34 +80,28 @@ export async function GET(request: Request) {
   const events = eventsRes.data ?? [];
   const subs = subsRes.data ?? [];
 
-  let totalSent = 0;
-  const allDead = new Set<string>();
+  // Các sự kiện độc lập nhau → gửi song song thay vì tuần tự
+  const results = await Promise.all(
+    events.map((event) => {
+      const prefix = event.event_date === today ? "Hôm nay" : "Ngày mai";
+      return sendToSubscriptions(
+        subs,
+        buildEventPayload(`${prefix}: ${event.name}`, [
+          event.location ? `Địa điểm: ${event.location}` : null,
+        ]),
+      );
+    }),
+  );
 
-  for (const event of events) {
-    const prefix = event.event_date === today ? "Hôm nay" : "Ngày mai";
-    const { sent, deadEndpoints } = await sendToSubscriptions(subs, {
-      title: `${prefix}: ${event.name}`,
-      body: event.location
-        ? `Địa điểm: ${event.location}`
-        : "Xem chi tiết trong trang Sự kiện gia phả.",
-      url: "/dashboard/events",
-    });
-    totalSent += sent;
-    deadEndpoints.forEach((e) => allDead.add(e));
-  }
-
-  if (allDead.size > 0) {
-    await supabase
-      .from("push_subscriptions")
-      .delete()
-      .in("endpoint", [...allDead]);
-  }
+  const totalSent = results.reduce((n, r) => n + r.sent, 0);
+  const allDead = new Set(results.flatMap((r) => r.deadEndpoints));
+  const cleaned = await pruneDeadSubscriptions([...allDead]);
 
   return NextResponse.json({
     slot,
     events: events.length,
     subscriptions: subs.length,
     sent: totalSent,
-    cleaned: allDead.size,
+    cleaned,
   });
 }

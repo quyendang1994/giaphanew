@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/utils/supabase/admin";
 import webpush from "web-push";
 
 export interface PushSubscriptionRow {
@@ -12,17 +13,52 @@ export interface PushPayload {
   url?: string;
 }
 
+// Cột subscription cần cho việc gửi push — giữ chung để trùng với PushSubscriptionRow
+export const PUSH_SUB_COLUMNS = "endpoint, p256dh, auth";
+// Trang mở khi bấm vào thông báo (dùng chung cho cả hai route gửi push)
+export const EVENTS_URL = "/dashboard/events";
+const DEFAULT_BODY = "Xem chi tiết trong trang Sự kiện gia phả.";
+
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+const vapidContact =
+  process.env.VAPID_CONTACT_EMAIL || "mailto:example@giapha-os.local";
 
 export const isPushConfigured = Boolean(vapidPublicKey && vapidPrivateKey);
 
 if (isPushConfigured) {
   webpush.setVapidDetails(
-    "mailto:phu.ledinh123@gmail.com",
+    vapidContact.startsWith("mailto:") ? vapidContact : `mailto:${vapidContact}`,
     vapidPublicKey!,
     vapidPrivateKey!,
   );
+}
+
+/**
+ * Dựng payload thông báo cho một sự kiện: tiêu đề tùy route, phần chi tiết
+ * (ngày/địa điểm) ghép lại, và fallback + url dùng chung.
+ */
+export function buildEventPayload(
+  title: string,
+  detailParts: (string | null | undefined)[],
+): PushPayload {
+  const body = detailParts.filter(Boolean).join(" ") || DEFAULT_BODY;
+  return { title, body, url: EVENTS_URL };
+}
+
+/**
+ * Xóa các subscription đã chết bằng admin client (bỏ qua RLS) — các endpoint
+ * này thường thuộc về người dùng khác nên session thường không xóa được.
+ * Trả về số dòng đã yêu cầu xóa.
+ */
+export async function pruneDeadSubscriptions(
+  endpoints: string[],
+): Promise<number> {
+  if (endpoints.length === 0) return 0;
+  const admin = createAdminClient();
+  if (!admin) return 0;
+  await admin.from("push_subscriptions").delete().in("endpoint", endpoints);
+  return endpoints.length;
 }
 
 /**

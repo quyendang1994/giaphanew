@@ -1,18 +1,17 @@
-import { sendToSubscriptions } from "@/utils/push/server";
-import { createClient } from "@/utils/supabase/server";
-import { cookies } from "next/headers";
+import { formatDisplayDate } from "@/utils/dateHelpers";
+import {
+  buildEventPayload,
+  PUSH_SUB_COLUMNS,
+  pruneDeadSubscriptions,
+  sendToSubscriptions,
+} from "@/utils/push/server";
+import { getSupabase, getUser } from "@/utils/supabase/queries";
 import { NextResponse } from "next/server";
 
 // Gửi thông báo đẩy tới mọi thiết bị đã đăng ký khi có sự kiện mới.
 // Được gọi fire-and-forget từ CustomEventModal sau khi tạo sự kiện.
 export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -31,33 +30,29 @@ export async function POST(request: Request) {
 
   const details: string[] = [];
   if (body.event_date) {
-    const [y, m, d] = body.event_date.split("-");
-    if (y && m && d) details.push(`Ngày ${d}/${m}/${y}`);
+    const [y, m, d] = body.event_date.split("-").map(Number);
+    if (y && m && d) details.push(`Ngày ${formatDisplayDate(y, m, d)}`);
   }
   if (body.location) details.push(`tại ${body.location.slice(0, 80)}`);
+
+  const supabase = await getSupabase();
 
   // Không gửi cho chính người tạo sự kiện
   const { data: subs, error } = await supabase
     .from("push_subscriptions")
-    .select("endpoint, p256dh, auth")
+    .select(PUSH_SUB_COLUMNS)
     .neq("user_id", user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { sent, deadEndpoints } = await sendToSubscriptions(subs ?? [], {
-    title: `Sự kiện mới: ${name}`,
-    body: details.join(" ") || "Xem chi tiết trong trang Sự kiện gia phả.",
-    url: "/dashboard/events",
-  });
+  const { sent, deadEndpoints } = await sendToSubscriptions(
+    subs ?? [],
+    buildEventPayload(`Sự kiện mới: ${name}`, details),
+  );
 
-  if (deadEndpoints.length > 0) {
-    await supabase
-      .from("push_subscriptions")
-      .delete()
-      .in("endpoint", deadEndpoints);
-  }
+  const cleaned = await pruneDeadSubscriptions(deadEndpoints);
 
-  return NextResponse.json({ sent, cleaned: deadEndpoints.length });
+  return NextResponse.json({ sent, cleaned });
 }

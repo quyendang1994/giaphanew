@@ -18,26 +18,24 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export default function PushNotificationToggle() {
   const { user, supabase } = useUser();
-  const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const supported =
+    typeof navigator !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    !!vapidPublicKey;
 
   useEffect(() => {
-    const check = async () => {
-      if (
-        !("serviceWorker" in navigator) ||
-        !("PushManager" in window) ||
-        !vapidPublicKey
-      ) {
-        setSupported(false);
-        setLoading(false);
-        return;
-      }
-      setSupported(true);
+    if (!supported) {
+      setLoading(false);
+      return;
+    }
 
+    const check = async () => {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js");
         const subscription = await registration.pushManager.getSubscription();
@@ -49,7 +47,7 @@ export default function PushNotificationToggle() {
       }
     };
     check();
-  }, [vapidPublicKey]);
+  }, [supported]);
 
   const enable = async () => {
     if (!user) return;
