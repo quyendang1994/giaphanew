@@ -21,8 +21,10 @@ const DEFAULT_BODY = "Xem chi tiết trong trang Sự kiện gia phả.";
 
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+// Apple Web Push từ chối JWT nếu "sub" không phải mailto/https hợp lệ
+// (domain .local bị chặn với lỗi BadJwtToken). Fallback dùng example.com.
 const vapidContact =
-  process.env.VAPID_CONTACT_EMAIL || "mailto:example@giapha-os.local";
+  process.env.VAPID_CONTACT_EMAIL || "mailto:admin@example.com";
 
 export const isPushConfigured = Boolean(vapidPublicKey && vapidPrivateKey);
 
